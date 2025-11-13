@@ -6,7 +6,7 @@ from rest_framework.decorators import action
 from django.utils import timezone
 from .tasks import send_loan_notification
 from django.db.models import Count, Q
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class AuthorViewSet(viewsets.ModelViewSet):
     queryset = Author.objects.all()
@@ -15,7 +15,7 @@ class AuthorViewSet(viewsets.ModelViewSet):
 class BookViewSet(viewsets.ModelViewSet):
     queryset = Book.objects.all()
     serializer_class = BookSerializer
-    
+
     def get_query_set(self):
         return Book.objects.select_related().all
 
@@ -86,14 +86,15 @@ class LoanViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def extend_due_date(self, request, pk=None):
         loan = self.get_object()
-        today = timezone.now()
+        today = timezone.now().date()
         days = int(request.data.get("additional_days"))
+        print(loan.due_date, 'what is in here')
         if loan.is_returned:
-            return Response({"error": "cannot extend on already returned item"}, status=status.HTTP_400_BAD_REEQUST)
+            return Response({"error": "cannot extend on already returned item"}, status=status.HTTP_400_BAD_REQUEST)
         if not loan.due_date or loan.due_date < today:
-            return Response({"error": "Past return date"}, status=status.HTTP_400_BAD_REEQUST)
+            return Response({"error": "Past return date"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            loan.due_date += timezone.timedelta(days=days)
+            loan.due_date += timedelta(days=days)
             loan.save()
             return Response(self.serializer_class(loan).data, status=status.HTTP_200_OK)
         except Exception as e:
