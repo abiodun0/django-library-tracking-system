@@ -15,6 +15,10 @@ class AuthorViewSet(viewsets.ModelViewSet):
 class BookViewSet(viewsets.ModelViewSet):
     queryset = Book.objects.all()
     serializer_class = BookSerializer
+    
+    def get_query_set(self):
+        return Book.objects.select_related().all
+
 
     @action(detail=True, methods=['post'])
     def loan(self, request, pk=None):
