@@ -5,6 +5,7 @@ from .serializers import AuthorSerializer, BookSerializer, MemberSerializer, Loa
 from rest_framework.decorators import action
 from django.utils import timezone
 from .tasks import send_loan_notification
+from django.db.models import Count, Q
 
 class AuthorViewSet(viewsets.ModelViewSet):
     queryset = Author.objects.all()
@@ -17,6 +18,7 @@ class BookViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def loan(self, request, pk=None):
         book = self.get_object()
+        print(book, 'what is in the books')
         if book.available_copies < 1:
             return Response({'error': 'No available copies.'}, status=status.HTTP_400_BAD_REQUEST)
         member_id = request.data.get('member_id')
@@ -48,6 +50,29 @@ class BookViewSet(viewsets.ModelViewSet):
 class MemberViewSet(viewsets.ModelViewSet):
     queryset = Member.objects.all()
     serializer_class = MemberSerializer
+
+    @action(detail=False, methods=['get'])
+    def top_active(self, request):
+        queryset = (
+            Member.objects
+            .select_related('user')
+            .annotate(
+                active_loans=Count('loans', filter=Q(loans__is_returned=False))
+            )
+            .order_by('-active_loans')[:5]
+        )
+        data = [
+            {
+                "id": member.id,
+                "username": member.user.username,
+                "email": member.user.email,
+                "active_loans": member.active_loans,
+            }
+            for member in queryset
+        ]
+        return Response(data, status=status.HTTP_200_OK)
+
+
 
 class LoanViewSet(viewsets.ModelViewSet):
     queryset = Loan.objects.all()

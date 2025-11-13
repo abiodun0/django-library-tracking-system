@@ -1,3 +1,4 @@
+from django.utils import timezone
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -35,12 +36,17 @@ class Member(models.Model):
     def __str__(self):
         return self.user.username
 
+def get_due_date():
+    due_date_extra = 14
+    return timezone.now() + timezone.timedelta(days=due_date_extra)
+
 class Loan(models.Model):
     book = models.ForeignKey(Book, related_name='loans', on_delete=models.CASCADE)
     member = models.ForeignKey(Member, related_name='loans', on_delete=models.CASCADE)
     loan_date = models.DateField(auto_now_add=True)
     return_date = models.DateField(null=True, blank=True)
     is_returned = models.BooleanField(default=False)
+    due_date = models.DateField(null=False, blank=False, default=get_due_date)
 
     def __str__(self):
         return f"{self.book.title} loaned to {self.member.user.username}"
